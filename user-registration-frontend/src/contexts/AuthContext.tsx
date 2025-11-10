@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { loginUser, refreshToken, AuthTokens } from '@/api';
+import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback } from '@/api';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -17,25 +17,50 @@ const REFRESH_TOKEN_KEY = 'refreshToken';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  // Set up token getter for API calls
+  useEffect(() => {
+    setTokenGetter(() => accessToken);
+  }, [accessToken]);
+
+  // Set up token refresh callback
+  useEffect(() => {
+    setTokenRefreshCallback((tokens: AuthTokens) => {
+      setAccessToken(tokens.accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    });
+  }, []);
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-    if (accessToken && refreshToken) {
-      // Try to validate the access token or refresh if needed
-      setIsLoggedIn(true);
+    if (storedRefreshToken) {
+      // If we have a refresh token, try to refresh to get a new access token
+      refreshAccessToken().then((newToken) => {
+        if (newToken) {
+          setAccessToken(newToken);
+          setIsLoggedIn(true);
+        } else {
+          // If refresh fails, clear everything
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+        }
+      }).finally(() => {
+        setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       const tokens: AuthTokens = await loginUser({ email, password });
 
-      // Store tokens in localStorage
-      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+      // Store access token in memory
+      setAccessToken(tokens.accessToken);
+      // Store refresh token in localStorage
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 
       setIsLoggedIn(true);
@@ -45,8 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    // Clear tokens from localStorage
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    // Clear access token from memory
+    setAccessToken(null);
+    // Clear refresh token from localStorage
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setIsLoggedIn(false);
   };
@@ -62,8 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const tokens: AuthTokens = await refreshToken(storedRefreshToken);
 
-      // Update stored tokens
-      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+      // Update access token in memory
+      setAccessToken(tokens.accessToken);
+      // Update refresh token in localStorage
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 
       return tokens.accessToken;

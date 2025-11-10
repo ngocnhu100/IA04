@@ -20,10 +20,27 @@ const api = axios.create({
   },
 });
 
+// Function to get access token (will be set by AuthContext)
+let getAccessToken: () => string | null = () => null;
+// Function to refresh tokens (will be set by AuthContext)
+let refreshTokensCallback: ((tokens: AuthTokens) => void) | null = null;
+
+// Set the token getter function
+export const setTokenGetter = (getter: () => string | null) => {
+  getAccessToken = getter;
+};
+
+// Set the token refresh callback
+export const setTokenRefreshCallback = (
+  callback: (tokens: AuthTokens) => void
+) => {
+  refreshTokensCallback = callback;
+};
+
 // Request interceptor to add access token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -48,9 +65,10 @@ api.interceptors.response.use(
         if (refreshToken) {
           const tokens = await refreshTokenAPI(refreshToken);
 
-          // Update stored tokens
-          localStorage.setItem("accessToken", tokens.accessToken);
-          localStorage.setItem("refreshToken", tokens.refreshToken);
+          // Update tokens using the callback
+          if (refreshTokensCallback) {
+            refreshTokensCallback(tokens);
+          }
 
           // Retry the original request with new token
           originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
@@ -58,7 +76,6 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         // If refresh fails, redirect to login or logout
-        localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         window.location.href = "/login";
         return Promise.reject(refreshError);
