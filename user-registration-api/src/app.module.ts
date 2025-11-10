@@ -8,6 +8,7 @@ import { GlobalExceptionFilter } from "./global-exception.filter";
 import { UserEntity } from "./user.entity";
 import { databaseConfig, testDatabaseConfig } from "./database.config";
 import { HealthController } from "./health.controller";
+import { AuthModule } from "./auth.module";
 
 const isTest = process.env.NODE_ENV === "test";
 
@@ -15,6 +16,7 @@ const isTest = process.env.NODE_ENV === "test";
   imports: [
     TypeOrmModule.forRoot(isTest ? testDatabaseConfig : databaseConfig),
     TypeOrmModule.forFeature([UserEntity]),
+    AuthModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

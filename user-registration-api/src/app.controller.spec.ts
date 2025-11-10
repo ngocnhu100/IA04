@@ -174,4 +174,119 @@ describe("AppController (e2e)", () => {
         });
     });
   });
+
+  describe("/auth/login (POST)", () => {
+    it("should login successfully and return tokens", async () => {
+      // First register a user
+      await request(app.getHttpServer())
+        .post("/user/register")
+        .send({
+          email: "login-test@example.com",
+          password: "testpassword123",
+        })
+        .expect(201);
+
+      // Then login
+      return request(app.getHttpServer())
+        .post("/auth/login")
+        .send({
+          email: "login-test@example.com",
+          password: "testpassword123",
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty("accessToken");
+          expect(res.body).toHaveProperty("refreshToken");
+          expect(typeof res.body.accessToken).toBe("string");
+          expect(typeof res.body.refreshToken).toBe("string");
+        });
+    });
+
+    it("should return 401 for invalid credentials", () => {
+      return request(app.getHttpServer())
+        .post("/auth/login")
+        .send({
+          email: "nonexistent@example.com",
+          password: "wrongpassword",
+        })
+        .expect(401)
+        .expect((res) => {
+          expect(res.body).toHaveProperty("statusCode", 401);
+          expect(res.body).toHaveProperty("error", "Invalid credentials");
+        });
+    });
+
+    it("should return 400 for invalid email format", () => {
+      return request(app.getHttpServer())
+        .post("/auth/login")
+        .send({
+          email: "invalid-email",
+          password: "password123",
+        })
+        .expect(400);
+    });
+
+    it("should return 400 for missing password", () => {
+      return request(app.getHttpServer())
+        .post("/auth/login")
+        .send({
+          email: "test@example.com",
+        })
+        .expect(400);
+    });
+  });
+
+  describe("/auth/refresh (POST)", () => {
+    it("should refresh tokens successfully", async () => {
+      // Register and login first
+      await request(app.getHttpServer())
+        .post("/user/register")
+        .send({
+          email: "refresh-test@example.com",
+          password: "testpassword123",
+        })
+        .expect(201);
+
+      const loginResponse = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send({
+          email: "refresh-test@example.com",
+          password: "testpassword123",
+        })
+        .expect(201);
+
+      const refreshToken = loginResponse.body.refreshToken;
+
+      // Now refresh
+      return request(app.getHttpServer())
+        .post("/auth/refresh")
+        .send({
+          refreshToken,
+        })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty("accessToken");
+          expect(res.body).toHaveProperty("refreshToken");
+          expect(typeof res.body.accessToken).toBe("string");
+          expect(typeof res.body.refreshToken).toBe("string");
+          // Tokens are valid JWT strings
+        });
+    });
+
+    it("should return 401 for invalid refresh token", () => {
+      return request(app.getHttpServer())
+        .post("/auth/refresh")
+        .send({
+          refreshToken: "invalid-token",
+        })
+        .expect(401);
+    });
+
+    it("should return 400 for missing refresh token", () => {
+      return request(app.getHttpServer())
+        .post("/auth/refresh")
+        .send({})
+        .expect(400);
+    });
+  });
 });

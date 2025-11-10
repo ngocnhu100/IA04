@@ -24,23 +24,20 @@ export default function LoginForm() {
   async function onSubmit(values: LoginFormValues) {
     setIsLoading(true);
     setLoginError(false);
+    setLoginSuccess(false);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Mock login logic - simulate success for demo purposes
-    // In a real app, this would validate against registered users
-    if (values.email && values.password) {
+    try {
+      await login(values.email, values.password);
       setLoginSuccess(true);
-      login(values.email); // Mock login to auth context
       setTimeout(() => {
         navigate('/');
       }, 2000);
-    } else {
+    } catch (error: any) {
+      console.error('Login error:', error);
       setLoginError(true);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   return (

@@ -1,6 +1,14 @@
-import { Controller, Get, Post, Body, ValidationPipe } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  ValidationPipe,
+  BadRequestException,
+} from "@nestjs/common";
 import { AppService } from "./app.service";
 import { UserService, User } from "./user.service";
+import { AuthService, AuthTokens } from "./auth.service";
 import { RegisterUserDto } from "./register-user.dto";
 import { LoginUserDto } from "./login-user.dto";
 
@@ -8,7 +16,8 @@ import { LoginUserDto } from "./login-user.dto";
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly authService: AuthService
   ) {}
 
   @Get()
@@ -23,10 +32,20 @@ export class AppController {
     return this.userService.register(registerUserDto);
   }
 
-  @Post("user/login")
+  @Post("auth/login")
   async loginUser(
     @Body(new ValidationPipe()) loginUserDto: LoginUserDto
-  ): Promise<User> {
-    return this.userService.login(loginUserDto);
+  ): Promise<AuthTokens> {
+    return this.authService.login(loginUserDto);
+  }
+
+  @Post("auth/refresh")
+  async refreshToken(
+    @Body("refreshToken") refreshToken: string
+  ): Promise<AuthTokens> {
+    if (!refreshToken) {
+      throw new BadRequestException("Refresh token is required");
+    }
+    return this.authService.refreshToken(refreshToken);
   }
 }
