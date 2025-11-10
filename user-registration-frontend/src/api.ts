@@ -24,6 +24,8 @@ const api = axios.create({
 let getAccessToken: () => string | null = () => null;
 // Function to refresh tokens (will be set by AuthContext)
 let refreshTokensCallback: ((tokens: AuthTokens) => void) | null = null;
+// Function to logout (will be set by AuthContext)
+let logoutCallback: (() => void) | null = null;
 
 // Set the token getter function
 export const setTokenGetter = (getter: () => string | null) => {
@@ -35,6 +37,11 @@ export const setTokenRefreshCallback = (
   callback: (tokens: AuthTokens) => void
 ) => {
   refreshTokensCallback = callback;
+};
+
+// Set the logout callback
+export const setLogoutCallback = (callback: () => void) => {
+  logoutCallback = callback;
 };
 
 // Request interceptor to add access token
@@ -75,9 +82,10 @@ api.interceptors.response.use(
           return api(originalRequest);
         }
       } catch (refreshError) {
-        // If refresh fails, redirect to login or logout
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
+        // If refresh fails, logout user
+        if (logoutCallback) {
+          logoutCallback();
+        }
         return Promise.reject(refreshError);
       }
     }

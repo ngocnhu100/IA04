@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback } from '@/api';
+import { useNavigate } from 'react-router-dom';
+import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '@/api';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Set up token getter for API calls
   useEffect(() => {
@@ -29,6 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenRefreshCallback((tokens: AuthTokens) => {
       setAccessToken(tokens.accessToken);
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    });
+  }, []);
+
+  // Set up logout callback
+  useEffect(() => {
+    setLogoutCallback(() => {
+      logout();
     });
   }, []);
 
@@ -75,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear refresh token from localStorage
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     setIsLoggedIn(false);
+    // Redirect to login page
+    navigate('/login');
   };
 
   // Function to refresh access token (can be called when needed)

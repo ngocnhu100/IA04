@@ -3,8 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { loginUser, refreshToken, setTokenGetter, setTokenRefreshCallback } from '../api';
+import { loginUser, refreshToken, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '../api';
 import '@testing-library/jest-dom';
+
+// Mock react-router-dom
+const mockUseNavigate = vi.fn();
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => mockUseNavigate,
+}));
 
 // Mock localStorage
 const localStorageMock = {
@@ -24,6 +30,7 @@ vi.mock('../api', () => ({
   refreshToken: vi.fn(),
   setTokenGetter: vi.fn(),
   setTokenRefreshCallback: vi.fn(),
+  setLogoutCallback: vi.fn(),
 }));
 
 describe('AuthContext', () => {
@@ -31,6 +38,7 @@ describe('AuthContext', () => {
   const mockRefreshToken = vi.mocked(refreshToken);
   const mockSetTokenGetter = vi.mocked(setTokenGetter);
   const mockSetTokenRefreshCallback = vi.mocked(setTokenRefreshCallback);
+  const mockSetLogoutCallback = vi.mocked(setLogoutCallback);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,6 +49,7 @@ describe('AuthContext', () => {
     // Setup default mock implementations
     mockSetTokenGetter.mockImplementation(() => {});
     mockSetTokenRefreshCallback.mockImplementation(() => {});
+    mockSetLogoutCallback.mockImplementation(() => {});
   });
 
   afterEach(() => {

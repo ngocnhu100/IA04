@@ -12,6 +12,7 @@ vi.mock('../api', () => ({
   loginUser: vi.fn(),
   setTokenGetter: vi.fn(),
   setTokenRefreshCallback: vi.fn(),
+  setLogoutCallback: vi.fn(),
 }));
 
 // Mock react-router-dom
