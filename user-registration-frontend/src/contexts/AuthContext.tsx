@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '@/api';
+import { getTimeUntilExpiration, isTokenExpired } from '@/lib/utils';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -20,6 +21,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const navigate = useNavigate();
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Function to clear the refresh timer
+  const clearRefreshTimer = () => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  };
+
+  // Function to schedule token refresh before expiration
+  const scheduleTokenRefresh = (token: string) => {
+    if (!token) return;
+
+    clearRefreshTimer(); // Clear any existing timer
+
+    const timeUntilExpiration = getTimeUntilExpiration(token);
+    if (timeUntilExpiration <= 0) return;
+
+    // Refresh 5 minutes before expiration, or immediately if less than 5 minutes remain
+    const refreshTime = Math.max(0, timeUntilExpiration - 5 * 60 * 1000); // 5 minutes in milliseconds
+
+    console.log(`Token refresh scheduled in ${Math.round(refreshTime / 1000 / 60)} minutes`);
+
+    refreshTimerRef.current = setTimeout(async () => {
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.error('Failed to refresh token automatically:', error);
+      }
+    }, refreshTime);
+  };
 
   // Set up token getter for API calls
   useEffect(() => {
@@ -31,12 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenRefreshCallback((tokens: AuthTokens) => {
       setAccessToken(tokens.accessToken);
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+      // Schedule next refresh for the new token
+      scheduleTokenRefresh(tokens.accessToken);
     });
   }, []);
 
   // Set up logout callback
   useEffect(() => {
     setLogoutCallback(() => {
+      // Clear refresh timer
+      clearRefreshTimer();
       // Clear access token from memory
       setAccessToken(null);
       // Clear refresh token from localStorage
@@ -57,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newToken) {
           setAccessToken(newToken);
           setIsLoggedIn(true);
+          // Schedule refresh for the new token
+          scheduleTokenRefresh(newToken);
         } else {
           // If refresh fails, clear everything
           localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -69,6 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      clearRefreshTimer();
+    };
+  }, []);
+
   const login = async (email: string, password: string) => {
     try {
       const tokens: AuthTokens = await loginUser({ email, password });
@@ -79,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 
       setIsLoggedIn(true);
+      // Schedule token refresh for the new access token
+      scheduleTokenRefresh(tokens.accessToken);
     } catch (error) {
       throw error; // Re-throw to let the component handle the error
     }
@@ -109,6 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(tokens.accessToken);
       // Update refresh token in localStorage
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+
+      // Schedule next refresh for the new token
+      scheduleTokenRefresh(tokens.accessToken);
 
       return tokens.accessToken;
     } catch (error) {
