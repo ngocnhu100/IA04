@@ -3,13 +3,7 @@ import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 
-let cachedApp: any;
-
 async function bootstrap() {
-  if (cachedApp) {
-    return cachedApp;
-  }
-
   const app = await NestFactory.create(AppModule);
 
   // Robust CORS: allow one or more comma-separated origins and normalize trailing slashes
@@ -38,28 +32,8 @@ async function bootstrap() {
     allowedHeaders: ["Content-Type", "Authorization"],
   });
 
-  await app.init();
-
-  // Cache the app for serverless reuse
-  cachedApp = app.getHttpAdapter().getInstance();
-
-  // For local development only
-  if (!process.env.VERCEL) {
-    const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-    app.listen(port);
-    console.log(`Server listening on http://localhost:${port}`);
-  }
-
-  return cachedApp;
+  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+  await app.listen(port);
+  console.log(`Server listening on http://localhost:${port}`);
 }
-
-// Export for Vercel serverless functions
-export default async (req: any, res: any) => {
-  const app = await bootstrap();
-  return app(req, res);
-};
-
-// For local development
-if (!process.env.VERCEL) {
-  bootstrap();
-}
+bootstrap();
