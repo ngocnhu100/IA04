@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useUserProfile } from './hooks/useUserProfile';
 import { useLogoutMutation } from './hooks/authMutations';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -51,9 +53,8 @@ function MobileNavLink({ to, children, onClick }: { to: string; children: React.
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { data: userProfile } = useUserProfile();
+  const { isLoggedIn } = useAuth();
   const logoutMutation = useLogoutMutation();
-  const isLoggedIn = !!userProfile;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -123,18 +124,24 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <div className="h-screen bg-gray-50">
-          <Navigation />
+        <AuthProvider>
+          <div className="h-screen bg-gray-50">
+            <Navigation />
 
-          <main className="h-full">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-        </div>
+            <main className="h-full">
+              <Routes>
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+          </div>
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );

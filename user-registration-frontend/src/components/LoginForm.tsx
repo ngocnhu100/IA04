@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +10,23 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useLoginMutation } from '@/hooks/authMutations';
 
-type LoginFormValues = { email: string; password: string };
+// Zod schema for form validation
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email address is required to sign in')
+    .email('Please enter a valid email address (e.g., yourname@example.com)'),
+  password: z
+    .string()
+    .min(1, 'Password is required to sign in'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const { register, handleSubmit, formState: { errors, isValid, touchedFields }, trigger } = useForm<LoginFormValues>({
-    mode: 'onChange'
+    mode: 'all',
+    resolver: zodResolver(loginSchema)
   });
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -44,14 +58,7 @@ export default function LoginForm() {
             autoComplete="email"
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? 'login-email-error' : touchedFields.email && !errors.email ? 'login-email-success' : undefined}
-            {...register('email', {
-              required: 'Email address is required to sign in',
-              pattern: {
-                value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                message: 'Please enter a valid email address (e.g., yourname@example.com)'
-              },
-              onBlur: () => trigger('email')
-            })}
+            {...register('email')}
           />
           {touchedFields.email && !errors.email && (
             <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500 h-5 w-5" aria-hidden="true" />
@@ -91,10 +98,7 @@ export default function LoginForm() {
             autoComplete="current-password"
             aria-invalid={!!errors.password}
             aria-describedby={errors.password ? 'login-password-error' : touchedFields.password && !errors.password ? 'login-password-success' : undefined}
-            {...register('password', {
-              required: 'Password is required to sign in',
-              onBlur: () => trigger('password')
-            })}
+            {...register('password')}
           />
           <Button
             type="button"

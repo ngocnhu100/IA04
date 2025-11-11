@@ -37,9 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up logout callback
   useEffect(() => {
     setLogoutCallback(() => {
-      logout();
+      // Clear access token from memory
+      setAccessToken(null);
+      // Clear refresh token from localStorage
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      setIsLoggedIn(false);
+      // Redirect to login page
+      navigate('/login');
     });
-  }, []);
+  }, [navigate]);
 
   // Check if user is logged in on app start
   useEffect(() => {

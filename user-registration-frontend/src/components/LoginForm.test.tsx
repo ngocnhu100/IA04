@@ -3,7 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import LoginForm from '../components/LoginForm';
+import { AuthProvider } from '../contexts/AuthContext';
 import { loginUser, getUserProfile } from '../api';
 import '@testing-library/jest-dom';
 
@@ -24,7 +26,11 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   const queryClient = createTestQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <BrowserRouter>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
@@ -42,6 +48,7 @@ vi.mock('../api', () => ({
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  BrowserRouter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 describe('LoginForm - Authentication Flow (Req 1)', () => {
@@ -156,10 +163,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
       });
     });
 
-    // Should show success message and navigate
+    // Should show success message (navigation is handled by parent Login component)
     await waitFor(() => {
       expect(screen.getByText(/login successful/i)).toBeInTheDocument();
-      expect(mockNavigate).toHaveBeenCalledWith('/');
     }, { timeout: 3000 });
   });
 

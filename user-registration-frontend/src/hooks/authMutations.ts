@@ -1,41 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  loginUser,
-  registerUser,
-  getUserProfile,
-  refreshToken,
-  AuthTokens,
-  RegisterDto,
-  LoginDto,
-} from "@/api";
-import { useNavigate } from "react-router-dom";
-
-const ACCESS_TOKEN_KEY = "accessToken";
-const REFRESH_TOKEN_KEY = "refreshToken";
+import { registerUser, RegisterDto, LoginDto } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function useLoginMutation() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   return useMutation({
     mutationFn: async (credentials: LoginDto) => {
-      const tokens: AuthTokens = await loginUser(credentials);
-      return tokens;
+      // Use AuthContext login function instead of direct API call
+      await login(credentials.email, credentials.password);
     },
-    onSuccess: (tokens: AuthTokens) => {
-      // Store tokens
-      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-
-      // Fetch user profile and cache it
-      queryClient.fetchQuery({
-        queryKey: ["user-profile"],
-        queryFn: getUserProfile,
-        staleTime: 5 * 60 * 1000,
-      });
-
-      // Navigate to home
-      navigate("/");
+    onSuccess: () => {
+      // Navigation will be handled by Login component's useEffect
+      // Profile will be fetched when Home component renders
     },
     onError: (error) => {
       console.error("Login failed:", error);
@@ -45,19 +23,16 @@ export function useLoginMutation() {
 
 export function useLogoutMutation() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   return useMutation({
     mutationFn: async () => {
-      // Clear tokens
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      // Use AuthContext logout function
+      logout();
     },
     onSuccess: () => {
       // Clear user profile from cache
       queryClient.removeQueries({ queryKey: ["user-profile"] });
-      // Navigate to login
-      navigate("/login");
     },
   });
 }

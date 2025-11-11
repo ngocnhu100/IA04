@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import LoginForm from '@/components/LoginForm';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,12 +7,14 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Login() {
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (isLoggedIn) {
-      navigate('/');
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, location]);
 
   // Don't render anything if user is logged in (will redirect)
   if (isLoggedIn) {
