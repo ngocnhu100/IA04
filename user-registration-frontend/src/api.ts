@@ -2,6 +2,8 @@ import axios from "axios";
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  readonly VITE_ACCESS_TOKEN_KEY?: string;
+  readonly VITE_REFRESH_TOKEN_KEY?: string;
 }
 
 declare global {
