@@ -21,7 +21,8 @@ const api = axios.create({
 });
 
 // Function to get access token (will be set by AuthContext)
-let getAccessToken: () => string | null = () => null;
+let getAccessToken: () => string | null = () =>
+  localStorage.getItem("accessToken");
 // Function to refresh tokens (will be set by AuthContext)
 let refreshTokensCallback: ((tokens: AuthTokens) => void) | null = null;
 // Function to logout (will be set by AuthContext)
@@ -128,6 +129,17 @@ export async function refreshToken(refreshToken: string): Promise<AuthTokens> {
 export async function getApiStatus() {
   const response = await api.get("/");
   return response.data as string;
+}
+
+export type User = {
+  id: string;
+  email: string;
+  createdAt: string;
+};
+
+export async function getUserProfile(): Promise<User> {
+  const response = await api.get("/user/profile");
+  return response.data;
 }
 
 export default api;

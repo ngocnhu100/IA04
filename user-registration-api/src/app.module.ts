@@ -9,6 +9,7 @@ import { UserEntity } from "./user.entity";
 import { databaseConfig, testDatabaseConfig } from "./database.config";
 import { HealthController } from "./health.controller";
 import { AuthModule } from "./auth.module";
+import { UserController } from "./user.controller";
 
 const isTest = process.env.NODE_ENV === "test";
 
@@ -18,7 +19,7 @@ const isTest = process.env.NODE_ENV === "test";
     TypeOrmModule.forFeature([UserEntity]),
     AuthModule,
   ],
-  controllers: [AppController, HealthController],
+  controllers: [AppController, HealthController, UserController],
   providers: [
     AppService,
     UserService,

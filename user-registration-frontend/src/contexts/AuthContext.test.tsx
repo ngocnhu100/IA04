@@ -2,9 +2,32 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { loginUser, refreshToken, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '../api';
 import '@testing-library/jest-dom';
+
+// Create a test query client
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+// Test wrapper component
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = createTestQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 // Mock react-router-dom
 const mockUseNavigate = vi.fn();
@@ -71,9 +94,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -102,9 +127,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -144,9 +171,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       const loginButton = screen.getByTestId('login-btn');
@@ -188,9 +217,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       const loginButton = screen.getByTestId('login-btn');
@@ -233,9 +264,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       // Login first
@@ -279,9 +312,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       const loginButton = screen.getByTestId('login-btn');
@@ -323,9 +358,11 @@ describe('AuthContext', () => {
       };
 
       render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
       );
 
       // Login

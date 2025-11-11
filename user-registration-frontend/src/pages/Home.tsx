@@ -3,16 +3,22 @@ import { Link } from 'react-router-dom';
 import { UserPlus, LogIn, Sparkles, Loader2, LogOut, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getApiStatus } from '../api';
-import { useAuth } from '../contexts/AuthContext';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useLogoutMutation } from '../hooks/authMutations';
 
 export default function Home() {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data: apiStatus, isLoading: apiLoading, isError: apiError, refetch: refetchApi } = useQuery({
     queryKey: ['api-status'],
     queryFn: getApiStatus,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
   });
-  const { isLoggedIn, logout } = useAuth();
+
+  const { data: userProfile, isLoading: profileLoading, error: profileError } = useUserProfile();
+  const logoutMutation = useLogoutMutation();
+
+  // Check if user is logged in by checking if we have user profile data
+  const isLoggedIn = !!userProfile;
 
   if (isLoggedIn) {
     return (
@@ -21,25 +27,35 @@ export default function Home() {
           <div className="mb-6">
             <User className="h-12 w-12 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Welcome Back!</h2>
-            <p className="text-gray-600 text-sm sm:text-base">You are now logged in (simulated). Enjoy exploring the platform.</p>
+            {userProfile && (
+              <p className="text-gray-600 text-sm sm:text-base mb-2">
+                Logged in as: <span className="font-medium">{userProfile.email}</span>
+              </p>
+            )}
+            <p className="text-gray-600 text-sm sm:text-base">You are now logged in. Enjoy exploring the platform.</p>
           </div>
           <div className="mb-6 flex items-center justify-center gap-3 text-sm">
-            {isLoading ? (
+            {apiLoading ? (
               <span className="inline-flex items-center text-gray-500"><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Checking API...</span>
-            ) : isError ? (
+            ) : apiError ? (
               <span className="inline-flex items-center text-red-600 border border-red-200 bg-red-50 px-2 py-1 rounded-md">API: Offline</span>
             ) : (
               <span className="inline-flex items-center text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded-md">API: Online</span>
             )}
-            <button onClick={() => refetch()} className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 disabled:opacity-50" disabled={isFetching}>Refresh</button>
+            <button onClick={() => refetchApi()} className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 disabled:opacity-50" disabled={apiLoading}>Refresh</button>
           </div>
           <div className="space-y-4">
             <button
-              onClick={logout}
-              className="w-full bg-gradient-to-r from-red-500 to-pink-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-200 flex items-center justify-center font-medium"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              className="w-full bg-gradient-to-r from-red-500 to-pink-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-200 flex items-center justify-center font-medium disabled:opacity-50"
             >
-              <LogOut className="h-5 w-5 mr-2" />
-              Logout
+              {logoutMutation.isPending ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <LogOut className="h-5 w-5 mr-2" />
+              )}
+              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </div>
@@ -56,14 +72,14 @@ export default function Home() {
           <p className="text-gray-600 text-sm sm:text-base">Join thousands of users and start your journey today. Secure, fast, and easy to use.</p>
         </div>
         <div className="mb-6 flex items-center justify-center gap-3 text-sm">
-          {isLoading ? (
+          {apiLoading ? (
             <span className="inline-flex items-center text-gray-500"><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Checking API...</span>
-          ) : isError ? (
+          ) : apiError ? (
             <span className="inline-flex items-center text-red-600 border border-red-200 bg-red-50 px-2 py-1 rounded-md">API: Offline</span>
           ) : (
             <span className="inline-flex items-center text-green-600 border border-green-200 bg-green-50 px-2 py-1 rounded-md">API: Online</span>
           )}
-          <button onClick={() => refetch()} className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 disabled:opacity-50" disabled={isFetching}>Refresh</button>
+          <button onClick={() => refetchApi()} className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 disabled:opacity-50" disabled={apiLoading}>Refresh</button>
         </div>
         <div className="space-y-4">
           <Link

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/AuthContext';
+import { useLoginMutation } from '@/hooks/authMutations';
 
 type LoginFormValues = { email: string; password: string };
 
@@ -15,29 +15,11 @@ export default function LoginForm() {
     mode: 'onChange'
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false);
-  const [loginError, setLoginError] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const loginMutation = useLoginMutation();
 
   async function onSubmit(values: LoginFormValues) {
-    setIsLoading(true);
-    setLoginError(false);
-    setLoginSuccess(false);
-
-    try {
-      await login(values.email, values.password);
-      setLoginSuccess(true);
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    } catch (error: any) {
-      console.error('Login error:', error);
-      setLoginError(true);
-    } finally {
-      setIsLoading(false);
-    }
+    loginMutation.mutate(values);
   }
 
   return (
@@ -143,11 +125,11 @@ export default function LoginForm() {
 
       <Button
         type="submit"
-        disabled={isLoading || !isValid}
+        disabled={loginMutation.isPending || !isValid}
         className="w-full h-11 text-base font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-describedby={isLoading ? 'login-loading' : undefined}
+        aria-describedby={loginMutation.isPending ? 'login-loading' : undefined}
       >
-        {isLoading ? (
+        {loginMutation.isPending ? (
           <>
             <Loader2 className="animate-spin h-5 w-5 mr-2" aria-hidden="true" />
             <span id="login-loading">Signing you in...</span>
@@ -157,7 +139,7 @@ export default function LoginForm() {
         )}
       </Button>
 
-      {loginSuccess && (
+      {loginMutation.isSuccess && (
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-5 w-5 text-green-600" />
           <AlertTitle className="text-green-800">Login Successful!</AlertTitle>
@@ -167,7 +149,7 @@ export default function LoginForm() {
         </Alert>
       )}
 
-      {loginError && (
+      {loginMutation.isError && (
         <Alert variant="destructive" className="border-red-200 bg-red-50">
           <XCircle className="h-5 w-5" />
           <AlertTitle>Login Failed</AlertTitle>

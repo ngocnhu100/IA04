@@ -2,10 +2,32 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { AuthProvider } from '../contexts/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginForm from '../components/LoginForm';
-import { loginUser } from '../api';
+import { loginUser, getUserProfile } from '../api';
 import '@testing-library/jest-dom';
+
+// Create a test query client
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+// Test wrapper component
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = createTestQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 // Mock the API
 vi.mock('../api', () => ({
@@ -13,6 +35,7 @@ vi.mock('../api', () => ({
   setTokenGetter: vi.fn(),
   setTokenRefreshCallback: vi.fn(),
   setLogoutCallback: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
 // Mock react-router-dom
@@ -23,17 +46,24 @@ vi.mock('react-router-dom', () => ({
 
 describe('LoginForm - Authentication Flow (Req 1)', () => {
   const mockLoginUser = vi.mocked(loginUser);
+  const mockGetUserProfile = vi.mocked(getUserProfile);
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
+    // Mock getUserProfile to return a user object
+    mockGetUserProfile.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      createdAt: '2023-01-01T00:00:00.000Z',
+    });
   });
 
   it('should render login form with required fields', () => {
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
@@ -45,9 +75,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     const user = userEvent.setup();
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const submitButton = screen.getByRole('button', { name: /sign in/i });
@@ -71,9 +101,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     const user = userEvent.setup();
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const emailInput = screen.getByLabelText(/email address/i);
@@ -102,9 +132,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     ));
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const emailInput = screen.getByLabelText(/email address/i);
@@ -140,9 +170,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     mockLoginUser.mockRejectedValue(new Error(errorMessage));
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const emailInput = screen.getByLabelText(/email address/i);
@@ -171,9 +201,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     ));
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const emailInput = screen.getByLabelText(/email address/i);
@@ -197,9 +227,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     const user = userEvent.setup();
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const passwordInput = screen.getByLabelText(/^Password/);
@@ -223,9 +253,9 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
     const user = userEvent.setup();
 
     render(
-      <AuthProvider>
+      <TestWrapper>
         <LoginForm />
-      </AuthProvider>
+      </TestWrapper>
     );
 
     const signupLink = screen.getByText(/sign up here/i);

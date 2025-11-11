@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Menu, X, LogOut } from 'lucide-react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useUserProfile } from './hooks/useUserProfile';
+import { useLogoutMutation } from './hooks/authMutations';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -50,7 +51,9 @@ function MobileNavLink({ to, children, onClick }: { to: string; children: React.
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isLoggedIn, logout } = useAuth();
+  const { data: userProfile } = useUserProfile();
+  const logoutMutation = useLogoutMutation();
+  const isLoggedIn = !!userProfile;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -66,8 +69,9 @@ function Navigation() {
             <NavLink to="/">Home</NavLink>
             {isLoggedIn ? (
               <button 
-                onClick={logout}
-                className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
               >
                 Logout
               </button>
@@ -95,8 +99,9 @@ function Navigation() {
               <MobileNavLink to="/" onClick={() => setIsMenuOpen(false)}>Home</MobileNavLink>
               {isLoggedIn ? (
                 <button 
-                  onClick={() => { logout(); setIsMenuOpen(false); }}
-                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors text-left"
+                  onClick={() => { logoutMutation.mutate(); setIsMenuOpen(false); }}
+                  disabled={logoutMutation.isPending}
+                  className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors text-left disabled:opacity-50"
                 >
                   Logout
                 </button>
@@ -118,20 +123,18 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <div className="h-screen bg-gray-50">
-            <Navigation />
+        <div className="h-screen bg-gray-50">
+          <Navigation />
 
-            <main className="h-full">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
-        </AuthProvider>
+          <main className="h-full">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+        </div>
       </BrowserRouter>
     </QueryClientProvider>
   );
