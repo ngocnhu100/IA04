@@ -45,6 +45,32 @@ vi.mock('js-cookie', () => ({
   },
 }));
 
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
+Object.defineProperty(window, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+});
+
+// Mock window event listeners
+const mockAddEventListener = vi.fn();
+const mockRemoveEventListener = vi.fn();
+Object.defineProperty(window, 'addEventListener', {
+  value: mockAddEventListener,
+  writable: true,
+});
+Object.defineProperty(window, 'removeEventListener', {
+  value: mockRemoveEventListener,
+  writable: true,
+});
+
+// Mock API functions
+
 // Mock API functions
 vi.mock('../api', () => ({
   loginUser: vi.fn(),
@@ -66,6 +92,11 @@ describe('AuthContext', () => {
     (Cookies.get as any).mockClear();
     (Cookies.set as any).mockClear();
     (Cookies.remove as any).mockClear();
+    mockLocalStorage.getItem.mockClear();
+    mockLocalStorage.setItem.mockClear();
+    mockLocalStorage.removeItem.mockClear();
+    mockAddEventListener.mockClear();
+    mockRemoveEventListener.mockClear();
 
     // Setup default mock implementations
     mockSetTokenGetter.mockImplementation(() => {});
@@ -421,6 +452,200 @@ describe('AuthContext', () => {
         expect(screen.getByTestId('login-status')).toHaveTextContent('false');
         expect(mockUseNavigate).toHaveBeenCalledWith('/login');
       });
+    });
+  });
+
+  describe('Multi-tab synchronization', () => {
+    it('should logout when logout event is detected from another tab', async () => {
+      // First login to set up authenticated state
+      const mockTokens = {
+        accessToken: 'access-token-123',
+        refreshToken: 'refresh-token-456',
+      };
+
+      mockLoginUser.mockResolvedValue(mockTokens);
+
+      const TestComponent = () => {
+        const { login, isLoggedIn } = useAuth();
+
+        const handleLogin = async () => {
+          await login('test@example.com', 'password123');
+        };
+
+        return (
+          <div>
+            <button onClick={handleLogin} data-testid="login-btn">Login</button>
+            <div data-testid="logged-in">{isLoggedIn.toString()}</div>
+          </div>
+        );
+      };
+
+      render(
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
+      );
+
+      // Login first
+      const loginButton = screen.getByTestId('login-btn');
+      await userEvent.click(loginButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('logged-in')).toHaveTextContent('true');
+      });
+
+      // Get the storage event listener that was added
+      const storageListener = mockAddEventListener.mock.calls.find(call => call[0] === 'storage')?.[1];
+
+      // Simulate logout event from another tab
+      const storageEvent = new StorageEvent('storage', {
+        key: 'auth_logout_event',
+        newValue: Date.now().toString(),
+        oldValue: null,
+      });
+
+      // Call the event listener directly
+      storageListener(storageEvent);
+
+      // Should logout automatically
+      await waitFor(() => {
+        expect(Cookies.remove).toHaveBeenCalledWith('refreshToken');
+        expect(screen.getByTestId('logged-in')).toHaveTextContent('false');
+        expect(mockUseNavigate).toHaveBeenCalledWith('/login');
+      });
+    });
+
+    it('should set logout event in localStorage when logout is called', async () => {
+      // First login
+      const mockTokens = {
+        accessToken: 'access-token-123',
+        refreshToken: 'refresh-token-456',
+      };
+
+      mockLoginUser.mockResolvedValue(mockTokens);
+
+      const TestComponent = () => {
+        const { login, logout, isLoggedIn } = useAuth();
+
+        const handleLogin = async () => {
+          await login('test@example.com', 'password123');
+        };
+
+        const handleLogout = () => {
+          logout();
+        };
+
+        return (
+          <div>
+            <button onClick={handleLogin} data-testid="login-btn">Login</button>
+            <button onClick={handleLogout} data-testid="logout-btn">Logout</button>
+            <div data-testid="logged-in">{isLoggedIn.toString()}</div>
+          </div>
+        );
+      };
+
+      render(
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
+      );
+
+      // Login first
+      const loginButton = screen.getByTestId('login-btn');
+      await userEvent.click(loginButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('logged-in')).toHaveTextContent('true');
+      });
+
+      // Logout
+      const logoutButton = screen.getByTestId('logout-btn');
+      await userEvent.click(logoutButton);
+
+      // Should set logout event in localStorage
+      await waitFor(() => {
+        expect(mockLocalStorage.setItem).toHaveBeenCalledWith('auth_logout_event', expect.any(String));
+        expect(Cookies.remove).toHaveBeenCalledWith('refreshToken');
+        expect(screen.getByTestId('logged-in')).toHaveTextContent('false');
+      });
+
+      // Should clean up the logout event after a delay
+      await waitFor(() => {
+        expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_logout_event');
+      }, { timeout: 200 });
+    });
+
+    it('should not react to unrelated localStorage changes', async () => {
+      // First login to set up authenticated state
+      const mockTokens = {
+        accessToken: 'access-token-123',
+        refreshToken: 'refresh-token-456',
+      };
+
+      mockLoginUser.mockResolvedValue(mockTokens);
+
+      const TestComponent = () => {
+        const { login, isLoggedIn } = useAuth();
+
+        const handleLogin = async () => {
+          await login('test@example.com', 'password123');
+        };
+
+        return (
+          <div>
+            <button onClick={handleLogin} data-testid="login-btn">Login</button>
+            <div data-testid="logged-in">{isLoggedIn.toString()}</div>
+          </div>
+        );
+      };
+
+      render(
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
+      );
+
+      // Login first
+      const loginButton = screen.getByTestId('login-btn');
+      await userEvent.click(loginButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('logged-in')).toHaveTextContent('true');
+      });
+
+      // Record the call count before the storage event
+      const removeCallCountBefore = (Cookies.remove as any).mock.calls.filter((call: string[]) => call[0] === 'refreshToken').length;
+
+      // Get the storage event listener that was added
+      const storageCall = mockAddEventListener.mock.calls.find(call => call[0] === 'storage');
+      expect(storageCall).toBeDefined();
+      const storageListener = storageCall![1];
+
+      // Simulate unrelated localStorage change
+      const storageEvent = new StorageEvent('storage', {
+        key: 'some_other_key',
+        newValue: 'some_value',
+        oldValue: null,
+      });
+
+      // Record navigation calls before
+      const navigateCallCountBefore = mockUseNavigate.mock.calls.length;
+
+      // Call the event listener directly
+      storageListener(storageEvent);
+
+      // Wait a bit to ensure any async operations complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Check that navigation was not called
+      const navigateCallCountAfter = mockUseNavigate.mock.calls.length;
+      expect(navigateCallCountAfter).toBe(navigateCallCountBefore);
     });
   });
 });

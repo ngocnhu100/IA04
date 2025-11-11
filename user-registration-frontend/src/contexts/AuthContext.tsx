@@ -16,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ACCESS_TOKEN_KEY = import.meta.env.VITE_ACCESS_TOKEN_KEY || 'accessToken';
 const REFRESH_TOKEN_KEY = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'refreshToken';
+const LOGOUT_EVENT_KEY = 'auth_logout_event';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -73,6 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Set up logout callback
   useEffect(() => {
     setLogoutCallback(() => {
+      // Trigger logout event for other tabs
+      const logoutTimestamp = Date.now().toString();
+      localStorage.setItem(LOGOUT_EVENT_KEY, logoutTimestamp);
+
       // Clear refresh timer
       clearRefreshTimer();
       // Clear access token from memory
@@ -82,6 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoggedIn(false);
       // Redirect to login page
       navigate('/login');
+
+      // Clean up the logout event after a short delay
+      setTimeout(() => {
+        localStorage.removeItem(LOGOUT_EVENT_KEY);
+      }, 100);
     });
   }, [navigate]);
 
@@ -116,6 +126,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Multi-tab synchronization: listen for logout events from other tabs
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === LOGOUT_EVENT_KEY && event.newValue) {
+        console.log('Logout detected from another tab, logging out...');
+        // Clear refresh timer
+        clearRefreshTimer();
+        // Clear access token from memory
+        setAccessToken(null);
+        // Clear refresh token from cookies
+        Cookies.remove(REFRESH_TOKEN_KEY);
+        setIsLoggedIn(false);
+        // Redirect to login page
+        navigate('/login');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [navigate]);
+
   const login = async (email: string, password: string) => {
     try {
       const tokens: AuthTokens = await loginUser({ email, password });
@@ -134,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Trigger logout event for other tabs
+    const logoutTimestamp = Date.now().toString();
+    localStorage.setItem(LOGOUT_EVENT_KEY, logoutTimestamp);
+
+    // Clear refresh timer
+    clearRefreshTimer();
     // Clear access token from memory
     setAccessToken(null);
     // Clear refresh token from cookies
@@ -141,6 +181,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoggedIn(false);
     // Redirect to login page
     navigate('/login');
+
+    // Clean up the logout event after a short delay
+    setTimeout(() => {
+      localStorage.removeItem(LOGOUT_EVENT_KEY);
+    }, 100);
   };
 
   // Function to refresh access token (can be called when needed)
