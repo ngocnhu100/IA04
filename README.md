@@ -2,20 +2,37 @@
 
 This repo contains a NestJS API and a React (Vite + TS) frontend, plus Dockerized PostgreSQL and pgAdmin.
 
+## 🚀 Public Deployment
+
+The application is deployed and publicly accessible:
+
+- **Frontend**: https://ia-04-frontend-sigma.vercel.app
+- **Backend API**: https://ia-04-backend-drab.vercel.app
+
+**Note**: The hosted version includes an admin account seeded automatically.
+
+### Accessing the Public Version
+
+Simply visit https://ia-04-frontend-sigma.vercel.app in your browser. The frontend will connect to the backend API automatically.
+
 ## Project Overview
 
 This is a complete User Registration System that includes:
 
-- **Backend (NestJS)**: API for user registration with PostgreSQL database, input validation, password hashing, and comprehensive error handling
-- **Frontend (React + Vite)**: Modern UI with form validation, user-friendly error messages, and responsive design
-- **Database**: PostgreSQL with Docker containerization for easy setup
-- **Login**: Frontend-only simulation (no backend authentication required per project specifications)
+- **Backend (NestJS)**: API for user registration and authentication with PostgreSQL database, JWT tokens, role-based access control, input validation, password hashing, and comprehensive error handling
+- **Frontend (React + Vite)**: Modern UI with registration and login forms, real-time validation, user-friendly error messages, and responsive design
+- **Database**: PostgreSQL with Docker containerization for easy setup, automatic admin account seeding in production
+- **Authentication**: JWT-based authentication with access and refresh tokens, protected routes, and role-based permissions
 
 ## Features
 
-✅ **Backend API** (`/user/register` endpoint)
+✅ **Backend API** (Multiple endpoints)
 
 - User registration with email/password validation
+- JWT authentication with access and refresh tokens
+- Role-based access control (user/admin roles)
+- Protected routes with JWT guards
+- Automatic admin account seeding in production
 - Secure password hashing with bcrypt
 - Duplicate email prevention
 - Comprehensive error handling and validation
@@ -24,8 +41,10 @@ This is a complete User Registration System that includes:
 ✅ **Frontend UI**
 
 - Registration form with real-time validation
+- Login form with JWT authentication
 - Password strength indicator
-- Login form simulation (UI only)
+- Protected routes and user profile display
+- Admin dashboard for admin users
 - Responsive design with Tailwind CSS
 - Accessibility features (ARIA labels, keyboard navigation)
 - Success/error feedback with visual indicators
@@ -33,14 +52,15 @@ This is a complete User Registration System that includes:
 ✅ **Database**
 
 - PostgreSQL with TypeORM integration
-- Automatic schema creation in development
+- User table with role-based permissions
+- Automatic schema creation in development/production
 - Docker containerization for easy setup
 - Optional pgAdmin web interface
 
 ✅ **Testing**
 
 - Backend unit tests and e2e tests with Jest
-- Comprehensive test coverage for validation and error scenarios
+- Comprehensive test coverage for validation and authentication scenarios
 
 ## Prerequisites
 
@@ -140,12 +160,15 @@ Notes:
 
 ## Sample Users
 
-After seeding, these pre-registered users exist in the database for testing purposes:
+In production, an admin account is automatically seeded:
 
-- **alice@example.com** / **Password123!**
-- **bob@example.com** / **Password123!**
+- **alice@example.com** / **Password123!** (admin role)
 
-**Note:** These users are for reference/testing registration only (e.g., testing duplicate email validation). **Login is simulated on the frontend** - no real authentication occurs. The login form will accept any valid email/password combination and simulate a successful login for UI demonstration purposes.
+Additional sample users for testing (if SQL seed script is run):
+
+- **bob@example.com** / **Password123!** (user role)
+
+**Note:** The admin account provides access to protected admin routes. Regular users can access their profile but not admin-only content. The SQL seed script can be run in any environment to add the additional test user.
 
 ## 2) Run the backend (NestJS)
 
@@ -189,6 +212,30 @@ The app expects the API base URL from `VITE_API_URL` (defaults to http://localho
 **Used by**: Frontend registration form
 **Features**: Email validation, password hashing, duplicate prevention
 
+### POST /auth/login
+
+**Purpose**: Authenticate user and return JWT tokens
+**Used by**: Frontend login form
+**Features**: Credential validation, token generation
+
+### POST /auth/refresh
+
+**Purpose**: Refresh JWT access token
+**Used by**: Frontend token refresh
+**Features**: Token validation and renewal
+
+### GET /user/profile (Protected)
+
+**Purpose**: Get current user profile
+**Used by**: Frontend dashboard
+**Features**: JWT authentication required
+
+### GET /user/admin (Protected - Admin Only)
+
+**Purpose**: Access admin-only data
+**Used by**: Frontend admin dashboard
+**Features**: JWT authentication + admin role required
+
 ### GET /health/db
 
 **Purpose**: Database connectivity check
@@ -198,9 +245,11 @@ The app expects the API base URL from `VITE_API_URL` (defaults to http://localho
 
 1. **Registration**: User fills out registration form → Frontend validates → Sends to `/user/register` → Backend validates, hashes password, saves to database → Returns success/error
 
-2. **Login**: User fills out login form → Frontend simulates authentication → Shows success message → Redirects to dashboard (no actual backend authentication)
+2. **Authentication**: User logs in → Frontend sends credentials to `/auth/login` → Backend validates and returns JWT tokens → Frontend stores tokens and redirects to dashboard
 
-3. **Database**: PostgreSQL stores user data with secure password hashing
+3. **Protected Routes**: Frontend includes JWT token in requests to protected endpoints → Backend validates token and role permissions → Returns user data or admin content
+
+4. **Database**: PostgreSQL stores user data with secure password hashing and role assignments; admin account is automatically created in production
 
 ## Troubleshooting
 

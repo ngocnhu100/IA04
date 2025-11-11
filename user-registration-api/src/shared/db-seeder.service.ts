@@ -2,7 +2,7 @@ import { Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as bcrypt from "bcrypt";
-import { UserEntity } from "./user.entity";
+import { UserEntity } from "../user/user.entity";
 
 @Injectable()
 export class DbSeederService implements OnApplicationBootstrap {

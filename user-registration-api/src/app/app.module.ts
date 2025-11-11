@@ -3,14 +3,14 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { APP_FILTER } from "@nestjs/core";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { UserService } from "./user.service";
-import { GlobalExceptionFilter } from "./global-exception.filter";
-import { UserEntity } from "./user.entity";
-import { databaseConfig, testDatabaseConfig } from "./database.config";
-import { HealthController } from "./health.controller";
-import { AuthModule } from "./auth.module";
-import { UserController } from "./user.controller";
-import { DbSeederService } from "./db-seeder.service";
+import { UserService } from "../user/user.service";
+import { GlobalExceptionFilter } from "../shared/global-exception.filter";
+import { UserEntity } from "../user/user.entity";
+import { databaseConfig, testDatabaseConfig } from "../shared/database.config";
+import { HealthController } from "../health/health.controller";
+import { AuthModule } from "../auth/auth.module";
+import { UserController } from "../user/user.controller";
+import { DbSeederService } from "../shared/db-seeder.service";
 
 const isTest = process.env.NODE_ENV === "test";
 

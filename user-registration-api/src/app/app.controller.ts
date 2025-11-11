@@ -7,10 +7,10 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { AppService } from "./app.service";
-import { UserService, User } from "./user.service";
-import { AuthService, AuthTokens } from "./auth.service";
-import { RegisterUserDto } from "./register-user.dto";
-import { LoginUserDto } from "./login-user.dto";
+import { UserService, User } from "../user/user.service";
+import { AuthService, AuthTokens } from "../auth/auth.service";
+import { RegisterUserDto } from "../user/register-user.dto";
+import { LoginUserDto } from "../user/login-user.dto";
 
 @Controller()
 export class AppController {

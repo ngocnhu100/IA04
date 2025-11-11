@@ -1,6 +1,12 @@
 # user-registration-api
 
-Minimal NestJS starter for user registration API with PostgreSQL database.
+Minimal NestJS starter for user registration API with PostgreSQL database, JWT authentication, and role-based access control.
+
+## 🚀 Public Deployment
+
+The backend API is deployed and publicly accessible at: https://ia-04-backend-drab.vercel.app
+
+**Note**: The hosted version includes an admin account seeded automatically. All API endpoints function correctly in the hosted environment.
 
 ## Database Setup
 
@@ -62,7 +68,7 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DBNAME
 DB_SYNCHRONIZE=true
 ```
 
-If your provider gives `postgresql://...`, change it to `postgres://...`.
+**Note:** The hosted version at https://ia-04-backend-drab.vercel.app has `DB_SYNCHRONIZE=false` now that the schema is established, for production safety.
 
 ### Install Dependencies & Run
 
@@ -73,7 +79,7 @@ npm run start:dev
 # Server runs on http://localhost:3000/
 ```
 
-**Note:** TypeORM will automatically create the `users` table when the application starts (in development mode).
+**Note:** TypeORM will automatically create the `users` table when the application starts (in development mode, or in production if `DB_SYNCHRONIZE=true`).
 
 ## SQL scripts (schema + sample data)
 
@@ -96,14 +102,15 @@ psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
 ### User Table
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE public.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  role VARCHAR(50) NOT NULL DEFAULT 'user',
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX "IDX_USER_EMAIL" ON users (email);
+CREATE UNIQUE INDEX "IDX_USER_EMAIL" ON public.users (email);
 ```
 
 ## API Endpoints
@@ -175,6 +182,94 @@ Register a new user account.
 }
 ```
 
+### POST /auth/login
+
+Authenticate a user and return JWT tokens.
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
+
+**Success Response (201 Created):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### POST /auth/refresh
+
+Refresh JWT access token using refresh token.
+
+**Request Body:**
+
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Success Response (201 Created):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### GET /user/profile (Protected)
+
+Get the current user's profile information. Requires JWT authentication.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "id": "1234567890",
+  "email": "user@example.com",
+  "role": "user",
+  "createdAt": "2025-11-03T08:48:45.163Z"
+}
+```
+
+### GET /user/admin (Protected - Admin Only)
+
+Access admin-only data. Requires JWT authentication and admin role.
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "message": "This is admin-only data",
+  "user": {
+    "id": "1234567890",
+    "email": "admin@example.com",
+    "role": "admin",
+    "createdAt": "2025-11-03T08:48:45.163Z"
+  }
+}
+```
+
 ## Validation Rules
 
 - **Email**: Required, must be valid email format, normalized to lowercase
@@ -220,18 +315,32 @@ Notes:
 
 ### Manual API checks (PowerShell)
 
-**Note:** This API provides user registration functionality. Login is simulated on the frontend for UI demonstration purposes.
+**Note:** This API provides user registration and authentication functionality with role-based access control. In production, an admin account is automatically seeded.
 
-If you seeded sample data, the following users exist for testing registration (e.g., duplicate email validation):
+The following admin user exists for testing (created automatically in production):
 
-- alice@example.com / Password123!
-- bob@example.com / Password123!
+- alice@example.com / Password123! (admin role)
 
-Otherwise, register a user first, then test registration validation.
+Additional sample users for testing registration (if manually seeded):
+
+- bob@example.com / Password123! (user role)
+
+Register a user first, then test authentication and protected routes.
 
 ```powershell
 # Test successful registration
 Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"password123"}'
+
+# Test login (get tokens)
+$loginResponse = Invoke-WebRequest -Uri http://localhost:3000/auth/login -Method POST -ContentType "application/json" -Body '{"email":"alice@example.com","password":"Password123!"}'
+$tokens = $loginResponse.Content | ConvertFrom-Json
+$accessToken = $tokens.accessToken
+
+# Test protected profile endpoint
+Invoke-WebRequest -Uri http://localhost:3000/user/profile -Method GET -Headers @{Authorization="Bearer $accessToken"}
+
+# Test admin-only endpoint (using admin token)
+Invoke-WebRequest -Uri http://localhost:3000/user/admin -Method GET -Headers @{Authorization="Bearer $accessToken"}
 
 # Test validation errors
 Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"invalid","password":"short"}'
