@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, Check } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useLoginMutation } from '@/hooks/authMutations';
+import { NetworkError, TimeoutError, ServerError } from '@/api';
 
 // Zod schema for form validation
 const loginSchema = z.object({
@@ -24,7 +25,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
-  const { register, handleSubmit, formState: { errors, isValid, touchedFields }, trigger } = useForm<LoginFormValues>({
+  const { register, handleSubmit, formState: { errors, isValid, touchedFields }, trigger, watch } = useForm<LoginFormValues>({
     mode: 'all',
     resolver: zodResolver(loginSchema)
   });
@@ -52,12 +53,13 @@ export default function LoginForm() {
                 : touchedFields.email && !errors.email
                 ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            }`}
+            } ${loginMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
             type="email"
             placeholder="Enter your email address"
             autoComplete="email"
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? 'login-email-error' : touchedFields.email && !errors.email ? 'login-email-success' : undefined}
+            disabled={loginMutation.isPending}
             {...register('email')}
           />
           {touchedFields.email && !errors.email && (
@@ -92,12 +94,13 @@ export default function LoginForm() {
                 : touchedFields.password && !errors.password
                 ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            }`}
+            } ${loginMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
             type={showPassword ? 'text' : 'password'}
             placeholder="Enter your password"
             autoComplete="current-password"
             aria-invalid={!!errors.password}
             aria-describedby={errors.password ? 'login-password-error' : touchedFields.password && !errors.password ? 'login-password-success' : undefined}
+            disabled={loginMutation.isPending}
             {...register('password')}
           />
           <Button
@@ -108,6 +111,7 @@ export default function LoginForm() {
             aria-label={showPassword ? 'Hide password' : 'Show password'}
             aria-pressed={showPassword}
             title={showPassword ? 'Hide password' : 'Show password'}
+            disabled={loginMutation.isPending}
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
@@ -156,11 +160,44 @@ export default function LoginForm() {
       {loginMutation.isError && (
         <Alert variant="destructive" className="border-red-200 bg-red-50">
           <XCircle className="h-5 w-5" />
-          <AlertTitle>Login Failed</AlertTitle>
+          <AlertTitle>
+            {loginMutation.error instanceof NetworkError || loginMutation.error instanceof TimeoutError
+              ? 'Connection Problem'
+              : loginMutation.error instanceof ServerError
+              ? 'Server Error'
+              : 'Login Failed'
+            }
+          </AlertTitle>
           <AlertDescription className="mt-1">
             <span className="text-red-700">
-              The email address or password you entered is incorrect. Please check your credentials and try again.
+              {loginMutation.error instanceof Error
+                ? loginMutation.error.message
+                : 'The email address or password you entered is incorrect. Please check your credentials and try again.'
+              }
             </span>
+            {(loginMutation.error instanceof NetworkError ||
+              loginMutation.error instanceof TimeoutError ||
+              loginMutation.error instanceof ServerError) && (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Get current form values and retry
+                    const formData = watch();
+                    if (formData.email && formData.password) {
+                      loginMutation.mutate(formData);
+                    }
+                  }}
+                  disabled={loginMutation.isPending}
+                  className="text-red-600 border-red-300 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Try Again
+                </Button>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -171,7 +208,8 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => navigate('/signup')}
-            className="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-sm"
+            disabled={loginMutation.isPending}
+            className="text-blue-600 hover:text-blue-800 font-medium underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Sign up here
           </button>

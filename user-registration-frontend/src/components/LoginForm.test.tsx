@@ -42,6 +42,26 @@ vi.mock('../api', () => ({
   setTokenRefreshCallback: vi.fn(),
   setLogoutCallback: vi.fn(),
   getUserProfile: vi.fn(),
+  NetworkError: class extends Error {
+    constructor(message = 'Network connection failed') {
+      super(message);
+      this.name = 'NetworkError';
+    }
+  },
+  TimeoutError: class extends Error {
+    constructor(message = 'Request timed out') {
+      super(message);
+      this.name = 'TimeoutError';
+    }
+  },
+  ServerError: class extends Error {
+    statusCode?: number;
+    constructor(message = 'Server error occurred', statusCode = 500) {
+      super(message);
+      this.name = 'ServerError';
+      this.statusCode = statusCode;
+    }
+  },
 }));
 
 // Mock react-router-dom
@@ -191,7 +211,7 @@ describe('LoginForm - Authentication Flow (Req 1)', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/login failed/i)).toBeInTheDocument();
-      expect(screen.getByText(/the email address or password you entered is incorrect/i)).toBeInTheDocument();
+      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
     });
   });
 

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { registerUser, RegisterDto, LoginDto } from "@/api";
+import { LoginDto } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useLoginMutation() {
@@ -33,18 +33,6 @@ export function useLogoutMutation() {
     onSuccess: () => {
       // Clear user profile from cache
       queryClient.removeQueries({ queryKey: ["user-profile"] });
-    },
-  });
-}
-
-export function useRegisterMutation() {
-  return useMutation({
-    mutationFn: registerUser,
-    onSuccess: () => {
-      // Could navigate to login or show success message
-    },
-    onError: (error) => {
-      console.error("Registration failed:", error);
     },
   });
 }

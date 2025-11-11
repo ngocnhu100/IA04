@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Menu, X, LogOut } from 'lucide-react';
-import { useUserProfile } from './hooks/useUserProfile';
+import { Menu, X } from 'lucide-react';
 import { useLogoutMutation } from './hooks/authMutations';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -122,27 +122,29 @@ function Navigation() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <div className="h-screen bg-gray-50">
-            <Navigation />
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthProvider>
+            <div className="h-screen bg-gray-50">
+              <Navigation />
 
-            <main className="h-full">
-              <Routes>
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                } />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+              <main className="h-full">
+                <Routes>
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Home />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </div>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

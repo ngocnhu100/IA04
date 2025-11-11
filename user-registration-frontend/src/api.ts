@@ -18,7 +18,66 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 10000, // 10 second timeout
 });
+
+// Error types for better error handling
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public errorType:
+      | "auth"
+      | "network"
+      | "server"
+      | "validation"
+      | "unknown" = "unknown",
+    public field?: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export class NetworkError extends ApiError {
+  constructor(
+    message: string = "Network connection failed. Please check your internet connection and try again."
+  ) {
+    super(message, undefined, "network");
+    this.name = "NetworkError";
+  }
+}
+
+export class TimeoutError extends ApiError {
+  constructor(message: string = "Request timed out. Please try again.") {
+    super(message, 408, "network");
+    this.name = "TimeoutError";
+  }
+}
+
+export class ServerError extends ApiError {
+  constructor(
+    message: string = "Server error occurred. Please try again later.",
+    statusCode?: number
+  ) {
+    super(message, statusCode, "server");
+    this.name = "ServerError";
+  }
+}
+
+export class AuthError extends ApiError {
+  constructor(message: string, statusCode: number = 401, field?: string) {
+    super(message, statusCode, "auth", field);
+    this.name = "AuthError";
+  }
+}
+
+export class ValidationError extends ApiError {
+  constructor(message: string, field?: string) {
+    super(message, 400, "validation", field);
+    this.name = "ValidationError";
+  }
+}
 
 // Function to get access token (will be set by AuthContext)
 let getAccessToken: () => string | null = () =>
@@ -59,12 +118,13 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle token refresh and errors
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // Handle 401 errors (authentication/token issues)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -87,11 +147,71 @@ api.interceptors.response.use(
         if (logoutCallback) {
           logoutCallback();
         }
-        return Promise.reject(refreshError);
+        throw new AuthError(
+          "Your session has expired. Please log in again.",
+          401
+        );
       }
     }
 
-    return Promise.reject(error);
+    // Handle different types of errors
+    if (!error.response) {
+      // Network error (no response received)
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        throw new TimeoutError();
+      }
+      throw new NetworkError();
+    }
+
+    // Server responded with error
+    const { status, data } = error.response;
+    const errorMessage = data?.message || error.message;
+    const errorField = data?.field;
+
+    if (status >= 500) {
+      throw new ServerError(errorMessage, status);
+    }
+
+    if (status === 400) {
+      throw new ValidationError(errorMessage, errorField);
+    }
+
+    if (status === 401) {
+      throw new AuthError(errorMessage, status, errorField);
+    }
+
+    if (status === 403) {
+      throw new AuthError(
+        "You do not have permission to perform this action.",
+        status,
+        errorField
+      );
+    }
+
+    if (status === 404) {
+      throw new ApiError(
+        "The requested resource was not found.",
+        status,
+        "unknown",
+        errorField
+      );
+    }
+
+    if (status === 409) {
+      throw new ValidationError(errorMessage, errorField);
+    }
+
+    if (status === 422) {
+      throw new ValidationError(errorMessage, errorField);
+    }
+
+    // Default error
+    throw new ApiError(
+      errorMessage || "An unexpected error occurred. Please try again.",
+      status,
+      "unknown",
+      errorField
+    );
   }
 );
 

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { registerUser, RegisterDto } from '../api';
-import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2, Check, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NetworkError, TimeoutError, ServerError } from '@/api';
 
 type FormValues = {
   email: string;
@@ -101,12 +102,13 @@ export default function RegisterForm() {
                 : touchedFields.email && !errors.email
                 ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            }`}
+            } ${mutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
             type="email"
             placeholder="Enter your email address"
             autoComplete="email"
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? 'reg-email-error' : touchedFields.email && !errors.email ? 'reg-email-success' : undefined}
+            disabled={mutation.isPending}
             {...register('email', {
               required: 'Email address is required to create your account',
               pattern: {
@@ -148,12 +150,13 @@ export default function RegisterForm() {
                 : touchedFields.password && !errors.password
                 ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            }`}
+            } ${mutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
             type={showPassword ? 'text' : 'password'}
             placeholder="Create a strong password"
             autoComplete="new-password"
             aria-invalid={!!errors.password}
             aria-describedby={errors.password ? 'reg-password-error' : touchedFields.password && !errors.password ? 'reg-password-success' : 'password-requirements'}
+            disabled={mutation.isPending}
             {...register('password', {
               required: 'Password is required to secure your account',
               minLength: {
@@ -179,6 +182,7 @@ export default function RegisterForm() {
             aria-label={showPassword ? 'Hide password' : 'Show password'}
             aria-pressed={showPassword}
             title={showPassword ? 'Hide password' : 'Show password'}
+            disabled={mutation.isPending}
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
@@ -258,7 +262,7 @@ export default function RegisterForm() {
                 : touchedFields.confirm && !errors.confirm && watchedPassword === watchedConfirm && watchedConfirm
                 ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-            }`}
+            } ${mutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
             type={showConfirm ? 'text' : 'password'}
             placeholder="Confirm your password"
             autoComplete="new-password"
@@ -270,6 +274,7 @@ export default function RegisterForm() {
                 ? 'reg-confirm-success'
                 : undefined
             }
+            disabled={mutation.isPending}
             {...register('confirm', {
               required: 'Please confirm your password',
               validate: (value) => value === watchedPassword || 'Passwords do not match',
@@ -284,6 +289,7 @@ export default function RegisterForm() {
             aria-label={showConfirm ? 'Hide password confirmation' : 'Show password confirmation'}
             aria-pressed={showConfirm}
             title={showConfirm ? 'Hide password confirmation' : 'Show password confirmation'}
+            disabled={mutation.isPending}
             onClick={() => setShowConfirm(!showConfirm)}
           >
             {showConfirm ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
@@ -332,7 +338,14 @@ export default function RegisterForm() {
       {mutation.isError && (
         <Alert variant="destructive" className="border-red-200 bg-red-50">
           <XCircle className="h-5 w-5" />
-          <AlertTitle>Registration Failed</AlertTitle>
+          <AlertTitle>
+            {mutation.error instanceof NetworkError || mutation.error instanceof TimeoutError
+              ? 'Connection Problem'
+              : mutation.error instanceof ServerError
+              ? 'Server Error'
+              : 'Registration Failed'
+            }
+          </AlertTitle>
           <AlertDescription className="mt-1">
             {errorMessages.length > 1 ? (
               <ul className="list-disc pl-5 space-y-1 mt-2">
@@ -342,6 +355,29 @@ export default function RegisterForm() {
               </ul>
             ) : (
               <span className="text-red-700">{errorMessages[0]}</span>
+            )}
+            {(mutation.error instanceof NetworkError ||
+              mutation.error instanceof TimeoutError ||
+              mutation.error instanceof ServerError) && (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Get current form values and retry
+                    const formData = watch();
+                    if (formData.email && formData.password && formData.password === formData.confirm) {
+                      mutation.mutate({ email: formData.email, password: formData.password });
+                    }
+                  }}
+                  disabled={mutation.isPending}
+                  className="text-red-600 border-red-300 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Try Again
+                </Button>
+              </div>
             )}
             <div className="mt-3 text-sm text-red-600">
               Please check your information and try again.

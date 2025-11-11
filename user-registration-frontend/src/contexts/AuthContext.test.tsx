@@ -381,5 +381,48 @@ describe('AuthContext', () => {
         expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
       });
     });
+
+    it('should automatically logout when refresh token expires', async () => {
+      // Mock refresh token to fail (simulate expired refresh token)
+      mockRefreshToken.mockRejectedValue(new Error('Refresh token expired'));
+
+      // Set up initial state with refresh token
+      localStorageMock.getItem.mockReturnValue('refresh-token-456');
+
+      const TestComponent = () => {
+        const { refreshAccessToken, isLoggedIn } = useAuth();
+
+        const handleRefresh = async () => {
+          await refreshAccessToken?.();
+        };
+
+        return (
+          <div>
+            <button onClick={handleRefresh} data-testid="refresh-btn">Refresh Token</button>
+            <div data-testid="login-status">{isLoggedIn.toString()}</div>
+          </div>
+        );
+      };
+
+      render(
+        <TestWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </TestWrapper>
+      );
+
+      // Wait for initial load to complete
+      await waitFor(() => {
+        expect(mockRefreshToken).toHaveBeenCalledWith('refresh-token-456');
+      });
+
+      // The refresh should have failed and triggered logout
+      await waitFor(() => {
+        expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
+        expect(screen.getByTestId('login-status')).toHaveTextContent('false');
+        expect(mockUseNavigate).toHaveBeenCalledWith('/login');
+      });
+    });
   });
 });
