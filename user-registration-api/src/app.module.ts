@@ -10,6 +10,7 @@ import { databaseConfig, testDatabaseConfig } from "./database.config";
 import { HealthController } from "./health.controller";
 import { AuthModule } from "./auth.module";
 import { UserController } from "./user.controller";
+import { DbSeederService } from "./db-seeder.service";
 
 const isTest = process.env.NODE_ENV === "test";
 
@@ -23,6 +24,7 @@ const isTest = process.env.NODE_ENV === "test";
   providers: [
     AppService,
     UserService,
+    DbSeederService,
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
