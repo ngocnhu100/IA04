@@ -223,6 +223,45 @@ describe('RegisterForm', () => {
       const user = userEvent.setup();
 
       // Mock validation error (duplicate email)
+      mockRegisterUser.mockRejectedValueOnce(new ValidationError('Email address is already registered.', 'email'));
+
+      render(
+        <TestWrapper>
+          <RegisterForm />
+        </TestWrapper>
+      );
+
+      // Fill form
+      const emailInput = screen.getByLabelText(/email address/i);
+      await user.type(emailInput, 'alice@example.com');
+
+      const passwordInput = screen.getByLabelText(/^password/i);
+      await user.type(passwordInput, 'ValidPass123');
+
+      const confirmInput = screen.getByLabelText(/confirm password/i);
+      await user.type(confirmInput, 'ValidPass123');
+
+      // Submit form - should fail with validation error
+      const submitButton = screen.getByRole('button', { name: /create account/i });
+      await user.click(submitButton);
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByText('Validation Error')).toBeInTheDocument();
+        expect(screen.getByText('Email address is already registered.')).toBeInTheDocument();
+      });
+
+      // Check that retry button is NOT present
+      expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+
+      // Check that the "Please check your information" message IS present for validation errors
+      expect(screen.getByText('Please check your information and try again.')).toBeInTheDocument();
+    });
+
+    it('should not show redundant "please check your information" message for validation errors that already contain guidance', async () => {
+      const user = userEvent.setup();
+
+      // Mock validation error with existing guidance
       mockRegisterUser.mockRejectedValueOnce(new ValidationError('An account with this email address already exists. Please use a different email or try logging in instead.', 'email'));
 
       render(
@@ -254,7 +293,45 @@ describe('RegisterForm', () => {
       // Check that retry button is NOT present
       expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
 
-      // Check that the generic "Please check your information" message is NOT present
+      // Check that the redundant "Please check your information" message is NOT present
+      expect(screen.queryByText('Please check your information and try again.')).not.toBeInTheDocument();
+    });
+
+    it('should not show "please check your information" message for network errors', async () => {
+      const user = userEvent.setup();
+
+      // Mock network error
+      mockRegisterUser.mockRejectedValueOnce(new NetworkError());
+
+      render(
+        <TestWrapper>
+          <RegisterForm />
+        </TestWrapper>
+      );
+
+      // Fill form with minimal valid data
+      const emailInput = screen.getByLabelText(/email address/i);
+      await user.type(emailInput, 'test@example.com');
+
+      const passwordInput = screen.getByLabelText(/^password/i);
+      await user.type(passwordInput, 'ValidPass123');
+
+      const confirmInput = screen.getByLabelText(/confirm password/i);
+      await user.type(confirmInput, 'ValidPass123');
+
+      // Submit form - should fail with network error
+      const submitButton = screen.getByRole('button', { name: /create account/i });
+      await user.click(submitButton);
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByText('Connection Problem')).toBeInTheDocument();
+      });
+
+      // Check that retry button IS present
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+
+      // Check that the "Please check your information" message is NOT present for network errors
       expect(screen.queryByText('Please check your information and try again.')).not.toBeInTheDocument();
     });
   });

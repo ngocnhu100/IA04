@@ -381,7 +381,7 @@ export default function RegisterForm() {
                 </Button>
               </div>
             )}
-            {!(mutation.error instanceof ValidationError) && (
+            {mutation.error instanceof ValidationError && !errorMessages[0].toLowerCase().includes('please') && (
               <div className="mt-3 text-sm text-red-600">
                 Please check your information and try again.
               </div>
