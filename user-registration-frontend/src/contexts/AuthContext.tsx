@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useRe
 import { useNavigate } from 'react-router-dom';
 import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '@/api';
 import { getTimeUntilExpiration, isTokenExpired } from '@/lib/utils';
+import Cookies from 'js-cookie';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setTokenRefreshCallback((tokens: AuthTokens) => {
       setAccessToken(tokens.accessToken);
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+      Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
       // Schedule next refresh for the new token
       scheduleTokenRefresh(tokens.accessToken);
     });
@@ -76,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearRefreshTimer();
       // Clear access token from memory
       setAccessToken(null);
-      // Clear refresh token from localStorage
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      // Clear refresh token from cookies
+      Cookies.remove(REFRESH_TOKEN_KEY);
       setIsLoggedIn(false);
       // Redirect to login page
       navigate('/login');
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const storedRefreshToken = Cookies.get(REFRESH_TOKEN_KEY);
 
     if (storedRefreshToken) {
       // If we have a refresh token, try to refresh to get a new access token
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           scheduleTokenRefresh(newToken);
         } else {
           // If refresh fails, clear everything
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          Cookies.remove(REFRESH_TOKEN_KEY);
         }
       }).finally(() => {
         setIsLoading(false);
@@ -121,8 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Store access token in memory
       setAccessToken(tokens.accessToken);
-      // Store refresh token in localStorage
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+      // Store refresh token in cookies
+      Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
 
       setIsLoggedIn(true);
       // Schedule token refresh for the new access token
@@ -135,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     // Clear access token from memory
     setAccessToken(null);
-    // Clear refresh token from localStorage
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Clear refresh token from cookies
+    Cookies.remove(REFRESH_TOKEN_KEY);
     setIsLoggedIn(false);
     // Redirect to login page
     navigate('/login');
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Function to refresh access token (can be called when needed)
   const refreshAccessToken = async (): Promise<string | null> => {
     try {
-      const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      const storedRefreshToken = Cookies.get(REFRESH_TOKEN_KEY);
       if (!storedRefreshToken) {
         logout();
         return null;
@@ -155,8 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Update access token in memory
       setAccessToken(tokens.accessToken);
-      // Update refresh token in localStorage
-      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+      // Update refresh token in cookies
+      Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
 
       // Schedule next refresh for the new token
       scheduleTokenRefresh(tokens.accessToken);

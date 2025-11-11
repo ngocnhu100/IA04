@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { loginUser, refreshToken, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '../api';
 import '@testing-library/jest-dom';
+import Cookies from 'js-cookie';
 
 // Create a test query client
 const createTestQueryClient = () => new QueryClient({
@@ -35,17 +36,14 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => mockUseNavigate,
 }));
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
-
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-});
+// Mock Cookies
+vi.mock('js-cookie', () => ({
+  default: {
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
 
 // Mock API functions
 vi.mock('../api', () => ({
@@ -65,9 +63,9 @@ describe('AuthContext', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorageMock.getItem.mockClear();
-    localStorageMock.setItem.mockClear();
-    localStorageMock.removeItem.mockClear();
+    (Cookies.get as any).mockClear();
+    (Cookies.set as any).mockClear();
+    (Cookies.remove as any).mockClear();
 
     // Setup default mock implementations
     mockSetTokenGetter.mockImplementation(() => {});
@@ -81,7 +79,7 @@ describe('AuthContext', () => {
 
   describe('Initial state', () => {
     it('should initialize with logged out state when no tokens exist', async () => {
-      localStorageMock.getItem.mockReturnValue(null);
+      (Cookies.get as any).mockReturnValue(undefined);
 
       const TestComponent = () => {
         const { isLoggedIn, isLoading } = useAuth();
@@ -113,7 +111,7 @@ describe('AuthContext', () => {
         refreshToken: 'refresh-token-456',
       };
 
-      localStorageMock.getItem.mockReturnValue('refresh-token-456');
+      (Cookies.get as any).mockReturnValue('refresh-token-456');
       mockRefreshToken.mockResolvedValue(mockTokens);
 
       const TestComponent = () => {
@@ -186,7 +184,7 @@ describe('AuthContext', () => {
           email: 'test@example.com',
           password: 'password123',
         });
-        expect(localStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-token-456');
+        expect(Cookies.set).toHaveBeenCalledWith('refreshToken', 'refresh-token-456', { expires: 7, secure: true, sameSite: 'strict' });
         expect(screen.getByTestId('logged-in')).toHaveTextContent('true');
       });
     });
@@ -284,7 +282,7 @@ describe('AuthContext', () => {
       await userEvent.click(logoutButton);
 
       await waitFor(() => {
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
+        expect(Cookies.remove).toHaveBeenCalledWith('refreshToken');
         expect(screen.getByTestId('logged-in')).toHaveTextContent('false');
       });
     });
@@ -323,10 +321,10 @@ describe('AuthContext', () => {
       await userEvent.click(loginButton);
 
       await waitFor(() => {
-        // Access token should NOT be stored in localStorage
-        expect(localStorageMock.setItem).not.toHaveBeenCalledWith('accessToken', expect.any(String));
-        // Refresh token SHOULD be stored in localStorage
-        expect(localStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-token-456');
+        // Access token should NOT be stored in cookies
+        expect(Cookies.set).not.toHaveBeenCalledWith('accessToken', expect.any(String));
+        // Refresh token SHOULD be stored in cookies
+        expect(Cookies.set).toHaveBeenCalledWith('refreshToken', 'refresh-token-456', { expires: 7, secure: true, sameSite: 'strict' });
       });
     });
 
@@ -370,7 +368,7 @@ describe('AuthContext', () => {
       await userEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(localStorageMock.setItem).toHaveBeenCalledWith('refreshToken', 'refresh-token-456');
+        expect(Cookies.set).toHaveBeenCalledWith('refreshToken', 'refresh-token-456', { expires: 7, secure: true, sameSite: 'strict' });
       });
 
       // Logout
@@ -378,7 +376,7 @@ describe('AuthContext', () => {
       await userEvent.click(logoutButton);
 
       await waitFor(() => {
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
+        expect(Cookies.remove).toHaveBeenCalledWith('refreshToken');
       });
     });
 
@@ -387,7 +385,7 @@ describe('AuthContext', () => {
       mockRefreshToken.mockRejectedValue(new Error('Refresh token expired'));
 
       // Set up initial state with refresh token
-      localStorageMock.getItem.mockReturnValue('refresh-token-456');
+      (Cookies.get as any).mockReturnValue('refresh-token-456');
 
       const TestComponent = () => {
         const { refreshAccessToken, isLoggedIn } = useAuth();
@@ -419,7 +417,7 @@ describe('AuthContext', () => {
 
       // The refresh should have failed and triggered logout
       await waitFor(() => {
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
+        expect(Cookies.remove).toHaveBeenCalledWith('refreshToken');
         expect(screen.getByTestId('login-status')).toHaveTextContent('false');
         expect(mockUseNavigate).toHaveBeenCalledWith('/login');
       });
