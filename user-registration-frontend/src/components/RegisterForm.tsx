@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { NetworkError, TimeoutError, ServerError } from '@/api';
+import { NetworkError, TimeoutError, ServerError, ValidationError } from '@/api';
 
 type FormValues = {
   email: string;
@@ -60,7 +60,7 @@ export default function RegisterForm() {
   }
 
   // Normalize API error messages for nicer rendering (supports string or string[])
-  const apiErrorRaw = (mutation.error as any)?.response?.data?.message;
+  const apiErrorRaw = (mutation.error as any)?.response?.data?.message || (mutation.error as any)?.message;
   const errorMessages: string[] = Array.isArray(apiErrorRaw)
     ? apiErrorRaw
     : apiErrorRaw
@@ -343,6 +343,8 @@ export default function RegisterForm() {
               ? 'Connection Problem'
               : mutation.error instanceof ServerError
               ? 'Server Error'
+              : mutation.error instanceof ValidationError
+              ? 'Validation Error'
               : 'Registration Failed'
             }
           </AlertTitle>
@@ -379,9 +381,11 @@ export default function RegisterForm() {
                 </Button>
               </div>
             )}
-            <div className="mt-3 text-sm text-red-600">
-              Please check your information and try again.
-            </div>
+            {!(mutation.error instanceof ValidationError) && (
+              <div className="mt-3 text-sm text-red-600">
+                Please check your information and try again.
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}

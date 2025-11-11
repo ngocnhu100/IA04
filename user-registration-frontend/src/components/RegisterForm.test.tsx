@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RegisterForm from '../components/RegisterForm';
-import { registerUser, NetworkError, TimeoutError, ServerError } from '../api';
+import { registerUser, NetworkError, TimeoutError, ServerError, ValidationError } from '../api';
 import '@testing-library/jest-dom';
 
 // Create a test query client
@@ -54,6 +54,12 @@ vi.mock('../api', () => ({
     constructor(message: string) {
       super(message);
       this.name = 'ServerError';
+    }
+  },
+  ValidationError: class ValidationError extends Error {
+    constructor(message: string, public field?: string) {
+      super(message);
+      this.name = 'ValidationError';
     }
   },
 }));
@@ -209,6 +215,47 @@ describe('RegisterForm', () => {
         expect(screen.getByText('Account Created Successfully!')).toBeInTheDocument();
         expect(mockRegisterUser).toHaveBeenCalledTimes(2);
       });
+    });
+  });
+
+  describe('Validation errors', () => {
+    it('should not show retry button for validation errors', async () => {
+      const user = userEvent.setup();
+
+      // Mock validation error (duplicate email)
+      mockRegisterUser.mockRejectedValueOnce(new ValidationError('An account with this email address already exists. Please use a different email or try logging in instead.', 'email'));
+
+      render(
+        <TestWrapper>
+          <RegisterForm />
+        </TestWrapper>
+      );
+
+      // Fill form
+      const emailInput = screen.getByLabelText(/email address/i);
+      await user.type(emailInput, 'alice@example.com');
+
+      const passwordInput = screen.getByLabelText(/^password/i);
+      await user.type(passwordInput, 'ValidPass123');
+
+      const confirmInput = screen.getByLabelText(/confirm password/i);
+      await user.type(confirmInput, 'ValidPass123');
+
+      // Submit form - should fail with validation error
+      const submitButton = screen.getByRole('button', { name: /create account/i });
+      await user.click(submitButton);
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByText('Validation Error')).toBeInTheDocument();
+        expect(screen.getByText('An account with this email address already exists. Please use a different email or try logging in instead.')).toBeInTheDocument();
+      });
+
+      // Check that retry button is NOT present
+      expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+
+      // Check that the generic "Please check your information" message is NOT present
+      expect(screen.queryByText('Please check your information and try again.')).not.toBeInTheDocument();
     });
   });
 
