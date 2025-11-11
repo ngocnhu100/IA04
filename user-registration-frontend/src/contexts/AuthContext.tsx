@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, refreshToken, AuthTokens, setTokenGetter, setTokenRefreshCallback, setLogoutCallback } from '@/api';
-import { getTimeUntilExpiration, isTokenExpired } from '@/lib/utils';
+import { getTimeUntilExpiration, isTokenExpired, decodeJWT } from '@/lib/utils';
 import Cookies from 'js-cookie';
 
 interface AuthContextType {
@@ -10,18 +10,27 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   refreshAccessToken?: () => Promise<string | null>;
+  userRole: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ACCESS_TOKEN_KEY = import.meta.env.VITE_ACCESS_TOKEN_KEY || 'accessToken';
-const REFRESH_TOKEN_KEY = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'refreshToken';
-const LOGOUT_EVENT_KEY = 'auth_logout_event';
+  const ACCESS_TOKEN_KEY = import.meta.env.VITE_ACCESS_TOKEN_KEY || 'accessToken';
+  const REFRESH_TOKEN_KEY = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'refreshToken';
+  const LOGOUT_EVENT_KEY = 'auth_logout_event';
+
+  // Function to extract user role from token
+  const getUserRoleFromToken = (token: string | null): string | null => {
+    if (!token) return null;
+    const decoded = decodeJWT(token);
+    return decoded?.role || null;
+  };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -66,6 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenRefreshCallback((tokens: AuthTokens) => {
       setAccessToken(tokens.accessToken);
       Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
+      // Extract and set user role
+      const role = getUserRoleFromToken(tokens.accessToken);
+      setUserRole(role);
       // Schedule next refresh for the new token
       scheduleTokenRefresh(tokens.accessToken);
     });
@@ -82,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearRefreshTimer();
       // Clear access token from memory
       setAccessToken(null);
+      // Clear user role
+      setUserRole(null);
       // Clear refresh token from cookies
       Cookies.remove(REFRESH_TOKEN_KEY);
       setIsLoggedIn(false);
@@ -105,6 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newToken) {
           setAccessToken(newToken);
           setIsLoggedIn(true);
+          // Extract and set user role
+          const role = getUserRoleFromToken(newToken);
+          setUserRole(role);
           // Schedule refresh for the new token
           scheduleTokenRefresh(newToken);
         } else {
@@ -135,6 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearRefreshTimer();
         // Clear access token from memory
         setAccessToken(null);
+        // Clear user role
+        setUserRole(null);
         // Clear refresh token from cookies
         Cookies.remove(REFRESH_TOKEN_KEY);
         setIsLoggedIn(false);
@@ -159,6 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Store refresh token in cookies
       Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
 
+      // Extract and set user role
+      const role = getUserRoleFromToken(tokens.accessToken);
+      setUserRole(role);
+
       setIsLoggedIn(true);
       // Schedule token refresh for the new access token
       scheduleTokenRefresh(tokens.accessToken);
@@ -176,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearRefreshTimer();
     // Clear access token from memory
     setAccessToken(null);
+    // Clear user role
+    setUserRole(null);
     // Clear refresh token from cookies
     Cookies.remove(REFRESH_TOKEN_KEY);
     setIsLoggedIn(false);
@@ -204,6 +229,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update refresh token in cookies
       Cookies.set(REFRESH_TOKEN_KEY, tokens.refreshToken, { expires: 7, secure: true, sameSite: 'strict' });
 
+      // Extract and set user role
+      const role = getUserRoleFromToken(tokens.accessToken);
+      setUserRole(role);
+
       // Schedule next refresh for the new token
       scheduleTokenRefresh(tokens.accessToken);
 
@@ -220,7 +249,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       isLoading,
-      refreshAccessToken: refreshAccessToken as any // Add this to context if needed
+      refreshAccessToken: refreshAccessToken as any, // Add this to context if needed
+      userRole,
     }}>
       {children}
     </AuthContext.Provider>

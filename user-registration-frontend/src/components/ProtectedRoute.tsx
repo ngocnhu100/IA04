@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRoles?: string[];
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isLoggedIn, isLoading } = useAuth();
+export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
+  const { isLoggedIn, isLoading, userRole } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -22,6 +23,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!isLoggedIn) {
     // Redirect to login page with return url
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (requiredRoles && requiredRoles.length > 0) {
+    if (!userRole || !requiredRoles.includes(userRole)) {
+      // Redirect to home or show unauthorized message
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;

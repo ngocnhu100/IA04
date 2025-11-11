@@ -6,6 +6,7 @@ import { UserEntity } from "./user.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtStrategy } from "./jwt.strategy";
 import { AuthService } from "./auth.service";
+import { RolesGuard } from "./roles.guard";
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { AuthService } from "./auth.service";
       signOptions: { expiresIn: "15m" }, // Access token expires in 15 minutes
     }),
   ],
-  providers: [AuthService, UserService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, UserService, JwtStrategy, RolesGuard],
+  exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

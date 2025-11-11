@@ -39,7 +39,7 @@ export class AuthService {
       });
     }
 
-    const payload = { email: user.email, sub: user.id };
+    const payload = { email: user.email, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: "7d" }); // Refresh token expires in 7 days
 
@@ -57,7 +57,7 @@ export class AuthService {
         throw new UnauthorizedException("Invalid refresh token");
       }
 
-      const newPayload = { email: user.email, sub: user.id };
+      const newPayload = { email: user.email, sub: user.id, role: user.role };
       const accessToken = this.jwtService.sign(newPayload);
       const refreshToken = this.jwtService.sign(newPayload, {
         expiresIn: "7d",

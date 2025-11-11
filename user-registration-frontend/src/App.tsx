@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import NotFound from './pages/NotFound';
+import { Admin } from './pages/Admin';
 
 const queryClient = new QueryClient();
 
@@ -53,7 +54,7 @@ function MobileNavLink({ to, children, onClick }: { to: string; children: React.
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, userRole } = useAuth();
   const logoutMutation = useLogoutMutation();
 
   return (
@@ -68,6 +69,9 @@ function Navigation() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-4">
             <NavLink to="/">Home</NavLink>
+            {isLoggedIn && userRole === 'admin' && (
+              <NavLink to="/admin">Admin</NavLink>
+            )}
             {isLoggedIn ? (
               <button 
                 onClick={() => logoutMutation.mutate()}
@@ -98,6 +102,9 @@ function Navigation() {
           <div className="md:hidden border-t border-gray-200 py-2">
             <nav className="flex flex-col space-y-1">
               <MobileNavLink to="/" onClick={() => setIsMenuOpen(false)}>Home</MobileNavLink>
+              {isLoggedIn && userRole === 'admin' && (
+                <MobileNavLink to="/admin" onClick={() => setIsMenuOpen(false)}>Admin</MobileNavLink>
+              )}
               {isLoggedIn ? (
                 <button 
                   onClick={() => { logoutMutation.mutate(); setIsMenuOpen(false); }}
@@ -134,6 +141,11 @@ export default function App() {
                   <Route path="/" element={
                     <ProtectedRoute>
                       <Home />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin" element={
+                    <ProtectedRoute requiredRoles={['admin']}>
+                      <Admin />
                     </ProtectedRoute>
                   } />
                   <Route path="/login" element={<Login />} />

@@ -16,6 +16,7 @@ import { LoginUserDto } from "./login-user.dto";
 export interface User {
   id: string;
   email: string;
+  role: string;
   createdAt: Date;
 }
 
@@ -104,6 +105,7 @@ export class UserService {
         newUser = this.userRepository.create({
           email: normalizedEmail,
           password: hashedPassword,
+          role: registerUserDto.role || "user",
         });
 
         await this.userRepository.save(newUser);
