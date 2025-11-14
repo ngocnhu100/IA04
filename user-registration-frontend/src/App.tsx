@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Menu, X } from 'lucide-react';
-import { useLogoutMutation } from './hooks/authMutations';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { AuthProvider, useAuth, useLogoutMutation, ProtectedRoute } from '@/features/auth';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -68,7 +66,7 @@ function Navigation() {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-4">
-            <NavLink to="/">Home</NavLink>
+            {isLoggedIn && <NavLink to="/">Home</NavLink>}
             {isLoggedIn && userRole === 'admin' && (
               <NavLink to="/admin">Admin</NavLink>
             )}
@@ -101,7 +99,7 @@ function Navigation() {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-2">
             <nav className="flex flex-col space-y-1">
-              <MobileNavLink to="/" onClick={() => setIsMenuOpen(false)}>Home</MobileNavLink>
+              {isLoggedIn && <MobileNavLink to="/" onClick={() => setIsMenuOpen(false)}>Home</MobileNavLink>}
               {isLoggedIn && userRole === 'admin' && (
                 <MobileNavLink to="/admin" onClick={() => setIsMenuOpen(false)}>Admin</MobileNavLink>
               )}

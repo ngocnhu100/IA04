@@ -2,8 +2,7 @@ import React from 'react';
 import { User, Loader2, LogOut } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getApiStatus } from '../api';
-import { useUserProfile } from '../hooks/useUserProfile';
-import { useLogoutMutation } from '../hooks/authMutations';
+import { useUserProfile, useLogoutMutation } from '@/features/auth';
 
 export default function Home() {
   const { data: apiStatus, isLoading: apiLoading, isError: apiError, refetch: refetchApi } = useQuery({

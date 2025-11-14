@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
-import LoginForm from '@/components/LoginForm';
-import { useAuth } from '../contexts/AuthContext';
+import { LoginForm, useAuth } from '@/features/auth';
 
 export default function Login() {
   const { isLoggedIn } = useAuth();

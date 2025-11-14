@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
-import RegisterForm from '../components/RegisterForm';
-import { useAuth } from '../contexts/AuthContext';
+import { RegisterForm, useAuth } from '@/features/auth';
 
 export default function SignUp() {
   const { isLoggedIn } = useAuth();

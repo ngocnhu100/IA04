@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useLoginMutation } from '@/hooks/authMutations';
+import { useLoginMutation } from '@/features/auth';
 import { NetworkError, TimeoutError, ServerError } from '@/api';
 
 // Zod schema for form validation

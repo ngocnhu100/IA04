@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   requiredRoles?: string[];
 }
 
-export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { isLoggedIn, isLoading, userRole } = useAuth();
   const location = useLocation();
 
